@@ -17,10 +17,11 @@ use crate::lnurl::withdraw::validate_lnurl_withdraw;
 use crate::lsp::LspInformation;
 use crate::models::{
     parse_short_channel_id, ChannelState, ClosedChannelPaymentDetails, Config, EnvironmentType,
-    FiatAPI, GreenlightCredentials, LnUrlCallbackStatus, LspAPI, Network, NodeAPI, NodeState,
-    Payment, PaymentDetails, PaymentType, PaymentTypeFilter, SwapInfo, SwapperAPI,
+    FiatAPI, GreenlightCredentials, LnUrlCallbackStatus, LspAPI, Network, NodeAPI, NodeState, Payment, PaymentDetails,
+    PaymentType, PaymentTypeFilter, ReverseSwapInfo, ReverseSwapperAPI, SwapInfo, SwapperAPI,
 };
 use crate::persist::db::SqliteStorage;
+use crate::reverseswap::BTCSendSwap;
 use crate::swap::BTCReceiveSwap;
 use crate::{LnUrlAuthRequestData, LnUrlWithdrawRequestData, PaymentResponse};
 use anyhow::{anyhow, Result};
@@ -449,6 +450,11 @@ impl BreezServices {
         Ok(None)
     }
 
+    pub async fn reverse_swap_info(&self) -> Result<ReverseSwapInfo> {
+        let rsi = crate::boltzswap::reverse_swap_info().await?;
+        return Ok(rsi);
+    }
+
     /// list non-completed expired swaps that should be refunded bu calling [BreezServices::refund]
     pub async fn list_refundables(&self) -> Result<Vec<SwapInfo>> {
         self.btc_receive_swapper.list_refundables()
@@ -706,6 +712,7 @@ struct BreezServicesBuilder {
     fiat_api: Option<Arc<dyn FiatAPI>>,
     persister: Option<Arc<SqliteStorage>>,
     swapper_api: Option<Arc<dyn SwapperAPI>>,
+    reverse_swapper_api: Option<Arc<dyn ReverseSwapperAPI>>,
 }
 
 #[allow(dead_code)]
@@ -720,6 +727,7 @@ impl BreezServicesBuilder {
             fiat_api: None,
             persister: None,
             swapper_api: None,
+            reverse_swapper_api: None,
         }
     }
 
@@ -745,6 +753,14 @@ impl BreezServicesBuilder {
 
     pub fn swapper_api(&mut self, swapper_api: Arc<dyn SwapperAPI>) -> &mut Self {
         self.swapper_api = Some(swapper_api.clone());
+        self
+    }
+
+    pub fn reverse_swapper_api(
+        &mut self,
+        reverse_swapper_api: Arc<dyn ReverseSwapperAPI>,
+    ) -> &mut Self {
+        self.reverse_swapper_api = Some(reverse_swapper_api.clone());
         self
     }
 
