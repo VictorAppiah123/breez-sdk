@@ -1,3 +1,4 @@
+use crate::boltzswap::BoltzApi;
 use crate::chain::{ChainService, MempoolSpace, RecommendedFees};
 use crate::fiat::{FiatCurrency, Rate};
 use crate::greenlight::Greenlight;
@@ -452,22 +453,27 @@ impl BreezServices {
     }
 
     pub async fn reverse_swap_info(&self) -> Result<ReverseSwapInfo> {
-        crate::boltzswap::reverse_swap_info().await
+        self.btc_send_swapper
+            .reverse_swapper_api
+            .reverse_swap_info()
+            .await
     }
 
+    /// The steps for a full reverse swap are:
+    ///
+    /// 1. User starts reverse swap (input: desired amount, destination BTC address)
+    /// 2. Receive HODL invoice from Boltz
+    /// 3. Pay the HODL invoice
+    /// 4. Monitor on-chain "lock" tx (poll), notify user on confirmation
+    /// 5. Broadcast "claim" tx (reveal preimage)
+    ///
+    /// This method covers steps 1 and 2 above.
     pub async fn send_onchain(
         &self,
         amount_sat: u64,
         onchain_recipient_address: String,
         pair_hash: String,
     ) -> Result<ReverseSwap> {
-        // TODO 1. Start reverse swap
-        // TODO 1. Get input: desired amount, destination BTC address
-        // TODO 2. Receive HODL invoice from Boltz
-        // TODO 3. Pay the HODL invoice
-
-        // TODO 4. Schedule monitoring of on-chain "lock" tx
-
         let routing_hop = self.lsp_info().await?;
 
         let rev_swap = self
@@ -480,12 +486,6 @@ impl BreezServices {
             )
             .await?;
         Ok(rev_swap)
-    }
-
-    pub async fn complete_reverse_swap(&self) -> Result<()> {
-        // TODO 5. Broadcast "claim" tx (reveal preimage)
-
-        Ok(())
     }
 
     /// list non-completed expired swaps that should be refunded bu calling [BreezServices::refund]
@@ -879,7 +879,7 @@ impl BreezServicesBuilder {
             self.config.network.clone().into(),
             self.reverse_swapper_api
                 .clone()
-                .unwrap_or_else(|| breez_server.clone()),
+                .unwrap_or_else(|| Arc::new(BoltzApi {})),
             persister.clone(),
             chain_service.clone(),
         ));
