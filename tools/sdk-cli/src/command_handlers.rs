@@ -127,6 +127,10 @@ pub(crate) async fn handle_command(
                 .await?;
             serde_json::to_string_pretty(&rev_swap_res).map_err(|e| e.into())
         }
+        Commands::InProgressReverseSwap {} => {
+            serde_json::to_string_pretty(&sdk()?.in_progress_reverse_swap().await?)
+                .map_err(|e| e.into())
+        }
         Commands::SendPayment { bolt11, amount } => {
             let payment = sdk()?.send_payment(bolt11, amount).await?;
             serde_json::to_string_pretty(&payment).map_err(|e| e.into())

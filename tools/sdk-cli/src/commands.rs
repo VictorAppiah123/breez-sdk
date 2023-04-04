@@ -51,6 +51,9 @@ pub(crate) enum Commands {
         onchain_recipient_address: String,
     },
 
+    /// Get the current in-progress reverse swap, if one exists
+    InProgressReverseSwap {},
+
     /// Send a lightning payment
     SendPayment {
         bolt11: String,

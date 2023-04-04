@@ -1,4 +1,5 @@
 use crate::boltzswap::BoltzApi;
+use crate::boltzswap::BoltzApiReverseSwapStatus::LockTxMempool;
 use crate::chain::{ChainService, MempoolSpace, RecommendedFees};
 use crate::fiat::{FiatCurrency, Rate};
 use crate::greenlight::Greenlight;
@@ -453,8 +454,27 @@ impl BreezServices {
         Ok(None)
     }
 
+    /// See [ReverseSwapperAPI::reverse_swap_pair_info]
     pub async fn reverse_swap_info(&self) -> Result<ReverseSwapPairInfo> {
-        self.btc_send_swapper.reverse_swap_info().await
+        self.btc_send_swapper.reverse_swap_pair_info().await
+    }
+
+    async fn poll_initial_boltz_status_transition(&self, id: &str) -> Result<()> {
+        let mut i = 0;
+        loop {
+            sleep(Duration::from_secs(5)).await;
+
+            info!("Checking reverse swap status, attempt {i}");
+            let reverse_swap_boltz_status = self
+                .btc_send_swapper
+                .reverse_swapper_api
+                .get_swap_status(id.into())
+                .await?;
+            if let LockTxMempool { transaction: _ } = reverse_swap_boltz_status {
+                return Ok(());
+            }
+            i += 1;
+        }
     }
 
     /// The steps for a full reverse swap are:
@@ -473,14 +493,56 @@ impl BreezServices {
         pair_hash: String,
     ) -> Result<ReverseSwapInfo> {
         let routing_hop = self.lsp_info().await?;
-        self.btc_send_swapper
+        let created_reverse_swap_info = self
+            .btc_send_swapper
             .create_reverse_swap(
                 amount_sat,
                 onchain_recipient_address.clone(),
                 pair_hash,
                 routing_hop.pubkey,
             )
-            .await
+            .await?;
+        info!("Created reverse swap: {created_reverse_swap_info:?}");
+
+        // Wait until one of the following happens:
+        // - trying to pay the HODL invoice explicitly fails from Greenlight
+        // - the regular poll of the Breez API detects the status of this reverse swap advanced to LockTxMempool
+        //   (meaning Boltz detected that we paid the HODL invoice)
+        // - the max allowed duration of a payment is reached
+        tokio::select! {
+            pay_thread_res = tokio::time::timeout(
+                Duration::from_secs(self.node_api.config().payment_timeout_sec as u64),
+                self.node_api.send_payment(created_reverse_swap_info.hodl_bolt11.clone(), None)
+            ) => {
+                // TODO It doesn't fail when trying to pay more sats than max_payable?
+                match pay_thread_res {
+                    // Paying a HODL invoice does not typically return, so if send_payment() returned, it's an abnormal situation
+                    Ok(Ok(res)) => Err(anyhow!("Payment of HODL invoice unexpectedly returned: {res:?}")),
+
+                    // send_payment() returned an error, so we know paying the HODL invoice failed
+                    Ok(Err(e)) => Err(anyhow!("Failed to pay HODL invoice: {e}")),
+
+                    // send_payment() has been trying to pay for longer than the payment timeout
+                    Err(e) => Err(anyhow!("Trying to pay the HODL invoice timed out: {e}"))
+                }
+            },
+            paid_invoice_res = self.poll_initial_boltz_status_transition(&created_reverse_swap_info.id) => {
+                match paid_invoice_res {
+                    Ok(_) => Ok(created_reverse_swap_info),
+                    Err(e) => Err(anyhow!(e))
+                }
+            }
+        }
+    }
+
+    /// Returns an optional in-progress [ReverseSwapInfo]
+    pub async fn in_progress_reverse_swap(&self) -> Result<Option<ReverseSwapInfo>> {
+        let monitored = self.btc_send_swapper.list_monitored()?;
+        match monitored.len() {
+            x if x == 0 => Ok(None),
+            x if x == 1 => Ok(monitored.first().cloned()),
+            _ => Err(anyhow!("Found more than one ongoing reverse swaps")),
+        }
     }
 
     /// list non-completed expired swaps that should be refunded bu calling [BreezServices::refund]
@@ -601,7 +663,13 @@ impl BreezServices {
     async fn notify_event_listeners(&self, e: BreezEvent) -> Result<()> {
         if let Err(err) = self.btc_receive_swapper.on_event(e.clone()).await {
             debug!(
-                "btc_receive_swapper failed to processed event {:?}: {:?}",
+                "btc_receive_swapper failed to process event {:?}: {:?}",
+                e, err
+            )
+        };
+        if let Err(err) = self.btc_send_swapper.on_event(e.clone()).await {
+            debug!(
+                "btc_send_swapper failed to process event {:?}: {:?}",
                 e, err
             )
         };

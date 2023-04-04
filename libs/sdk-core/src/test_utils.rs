@@ -292,6 +292,10 @@ impl NodeAPI for MockNodeAPI {
     fn derive_bip32_key(&self, _path: Vec<ChildNumber>) -> Result<ExtendedPrivKey> {
         Err(anyhow!("Not implemented"))
     }
+
+    fn config(&self) -> &Config {
+        todo!("No test config available")
+    }
 }
 
 impl MockNodeAPI {

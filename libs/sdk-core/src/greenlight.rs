@@ -485,6 +485,10 @@ impl NodeAPI for Greenlight {
             .derive_priv(&Secp256k1::new(), &path)
             .map_err(|e| anyhow!(e))
     }
+
+    fn config(&self) -> &Config {
+        &self.sdk_config
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, EnumString, Display, Deserialize, Serialize)]
