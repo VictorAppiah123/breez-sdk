@@ -18,13 +18,14 @@ use crate::lnurl::withdraw::validate_lnurl_withdraw;
 use crate::lsp::LspInformation;
 use crate::models::{
     parse_short_channel_id, ChannelState, ClosedChannelPaymentDetails, Config, EnvironmentType,
-    FiatAPI, GreenlightCredentials, LnUrlCallbackStatus, LspAPI, Network, NodeAPI, NodeState, Payment, PaymentDetails,
-    PaymentType, PaymentTypeFilter, ReverseSwapPairInfo, ReverseSwapperAPI, SwapInfo, SwapperAPI,
+    FiatAPI, GreenlightCredentials, LnUrlCallbackStatus, LspAPI, Network, NodeAPI, NodeState,
+    Payment, PaymentDetails, PaymentType, PaymentTypeFilter, ReverseSwapPairInfo,
+    ReverseSwapperAPI, SwapInfo, SwapperAPI,
 };
 use crate::persist::db::SqliteStorage;
 use crate::reverseswap::BTCSendSwap;
 use crate::swap::BTCReceiveSwap;
-use crate::{LnUrlAuthRequestData, LnUrlWithdrawRequestData, ReverseSwapInfo, ReverseSwap, PaymentResponse};
+use crate::{LnUrlAuthRequestData, LnUrlWithdrawRequestData, PaymentResponse, ReverseSwapInfo};
 use anyhow::{anyhow, Result};
 use bip39::*;
 use bitcoin_hashes::{sha256, Hash};
@@ -870,7 +871,7 @@ impl BreezServicesBuilder {
         ));
 
         let btc_send_swapper = Arc::new(BTCSendSwap::new(
-            self.config.network.clone().into(),
+            self.config.network.into(),
             self.reverse_swapper_api
                 .clone()
                 .unwrap_or_else(|| Arc::new(BoltzApi {})),
