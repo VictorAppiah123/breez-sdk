@@ -15,6 +15,7 @@ use crate::grpc::{PaymentInformation, RegisterPaymentReply};
 use crate::lnurl::pay::model::SuccessActionProcessed;
 use crate::lsp::LspInformation;
 use crate::models::Network::*;
+use crate::moonpay::moonpay_config::MoonPayConfig;
 use crate::LnUrlErrorData;
 
 /// Different types of supported payments
@@ -132,6 +133,7 @@ pub struct Config {
     pub default_lsp_id: Option<String>,
     pub api_key: Option<String>,
     pub maxfee_percent: f64,
+    pub moon_pay_config: MoonPayConfig,
 }
 
 impl Config {
@@ -145,6 +147,18 @@ impl Config {
             default_lsp_id: Some(String::from("03cea51f-b654-4fb0-8e82-eca137f236a0")),
             api_key: None,
             maxfee_percent: 0.5,
+            moon_pay_config: MoonPayConfig {
+                base_url: String::from("https://buy.moonpay.io"),
+                api_key: String::from("pk_live_Mx5g6bpD6Etd7T0bupthv7smoTNn2Vr"),
+                currency_code: String::from("btc"),
+                color_code: String::from("#055DEB"),
+                redirect_url: String::from(
+                    "https://buy.moonpay.io/transaction_receipt?addFunds=true",
+                ),
+                enabled_payment_methods: String::from(
+                    "credit_debit_card,sepa_bank_transfer,gbp_bank_transfer",
+                ),
+            },
         }
     }
 
@@ -159,6 +173,18 @@ impl Config {
             default_lsp_id: Some(String::from("ea51d025-042d-456c-8325-63e430797481")),
             api_key: None,
             maxfee_percent: 0.5,
+            moon_pay_config: MoonPayConfig {
+                base_url: String::from("https://buy.moonpay.io"),
+                api_key: String::from("pk_live_Mx5g6bpD6Etd7T0bupthv7smoTNn2Vr"),
+                currency_code: String::from("btc"),
+                color_code: String::from("#055DEB"),
+                redirect_url: String::from(
+                    "https://buy.moonpay.io/transaction_receipt?addFunds=true",
+                ),
+                enabled_payment_methods: String::from(
+                    "credit_debit_card,sepa_bank_transfer,gbp_bank_transfer",
+                ),
+            },
         }
     }
 }
@@ -483,6 +509,13 @@ pub enum LnUrlCallbackStatus {
         #[serde(flatten)]
         data: LnUrlErrorData,
     },
+}
+
+/// Different providers will demand different behaviours when the user is trying to buy bitcoin.
+#[derive(PartialEq, Eq, Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "buy_bitcoin_provider")]
+pub enum BuyBitcoinProvider {
+    MoonPay,
 }
 
 #[cfg(test)]

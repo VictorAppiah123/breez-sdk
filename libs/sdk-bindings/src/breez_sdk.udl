@@ -30,6 +30,15 @@ dictionary GreenlightCredentials {
     sequence<u8> device_cert;
 };
 
+dictionary MoonPayConfig {
+    string base_url;
+    string api_key;
+    string currency_code;
+    string color_code;
+    string redirect_url;
+    string enabled_payment_methods;
+};
+
 dictionary Config {
     string breezserver;
     string mempoolspace_url;
@@ -37,8 +46,9 @@ dictionary Config {
     Network network;
     u32 payment_timeout_sec;
     string? default_lsp_id;
-    string? api_key;    
+    string? api_key;
     f64 maxfee_percent;
+    MoonPayConfig moon_pay_config;
 };
 
 dictionary RouteHint {

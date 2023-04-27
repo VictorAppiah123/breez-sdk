@@ -14,6 +14,15 @@ typedef struct wire_uint_8_list {
   int32_t len;
 } wire_uint_8_list;
 
+typedef struct wire_MoonPayConfig {
+  struct wire_uint_8_list *base_url;
+  struct wire_uint_8_list *api_key;
+  struct wire_uint_8_list *currency_code;
+  struct wire_uint_8_list *color_code;
+  struct wire_uint_8_list *redirect_url;
+  struct wire_uint_8_list *enabled_payment_methods;
+} wire_MoonPayConfig;
+
 typedef struct wire_Config {
   struct wire_uint_8_list *breezserver;
   struct wire_uint_8_list *mempoolspace_url;
@@ -23,6 +32,7 @@ typedef struct wire_Config {
   struct wire_uint_8_list *default_lsp_id;
   struct wire_uint_8_list *api_key;
   double maxfee_percent;
+  struct wire_MoonPayConfig moon_pay_config;
 } wire_Config;
 
 typedef struct wire_GreenlightCredentials {
