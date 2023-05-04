@@ -140,23 +140,32 @@ pub struct ReverseSwapInfo {
     /// The reverse swap ID, as reported by the Boltz API in case of a successful creation
     pub id: String,
 
+    /// Local timestamp when the reverse swap is created
     pub created_at: i64,
 
-    // Locally generated fields
+    /// Locally generated preimage, revealed in the last step of the reverse swap
     pub local_preimage: Vec<u8>,
+
+    /// Locally generated private key, used to sign the claim tx
     pub local_private_key: Vec<u8>,
 
+    /// On-chain destination address, to which the reverse swap will finally send funds to
     pub destination_address: String,
 
-    // Other fields from the Boltz API response
     /// Reverse swap status, as reported by the Boltz API. Automatically updated on every new block.
     pub boltz_api_status: BoltzApiReverseSwapStatus,
 
     // Only available in the first response from Boltz API:
-    pub lockup_address: String,
     pub hodl_bolt11: String,
-    pub onchain_amount_sat: u64,
     pub redeem_script: String,
+
+    pub cache: ReverseSwapInfoCached,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct ReverseSwapInfoCached {
+    pub lockup_address: String,
+    pub onchain_amount_sat: u64,
 }
 
 impl ReverseSwapInfo {

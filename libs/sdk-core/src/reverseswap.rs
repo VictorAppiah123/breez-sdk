@@ -6,7 +6,9 @@ use crate::boltzswap::BoltzApiCreateReverseSwapResponse;
 use crate::boltzswap::BoltzApiReverseSwapStatus::SwapCreated;
 use crate::chain::{get_utxos, ChainService, MempoolSpace};
 use crate::models::ReverseSwapperAPI;
-use crate::{BreezEvent, ReverseSwapInfo, ReverseSwapPairInfo, ReverseSwapStatus};
+use crate::{
+    BreezEvent, ReverseSwapInfo, ReverseSwapInfoCached, ReverseSwapPairInfo, ReverseSwapStatus,
+};
 use anyhow::{anyhow, Result};
 use bitcoin::blockdata::constants::WITNESS_SCALE_FACTOR;
 use bitcoin::secp256k1::{Message, Secp256k1, SecretKey};
@@ -98,14 +100,16 @@ impl BTCSendSwap {
                 let rev_swap_info = ReverseSwapInfo {
                     created_at: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64,
                     destination_address: onchain_destination_address,
-                    lockup_address: response.lockup_address,
                     hodl_bolt11: response.invoice,
                     local_preimage: reverse_swap_private_data.preimage,
                     local_private_key: reverse_swap_private_data.priv_key,
                     id: response.id,
                     boltz_api_status: SwapCreated,
-                    onchain_amount_sat: response.onchain_amount,
                     redeem_script: response.redeem_script,
+                    cache: ReverseSwapInfoCached {
+                        lockup_address: response.lockup_address,
+                        onchain_amount_sat: response.onchain_amount,
+                    },
                 };
 
                 self.persister.insert_reverse_swap(&rev_swap_info)?;
@@ -127,7 +131,7 @@ impl BTCSendSwap {
 
     /// Builds and signs claim tx
     async fn create_claim_tx(&self, rs: &ReverseSwapInfo) -> Result<Transaction> {
-        let lockup_addr_str = Address::from_str(&rs.lockup_address)?;
+        let lockup_addr_str = Address::from_str(&rs.cache.lockup_address)?;
         let destination_addr = Address::from_str(&rs.destination_address)?;
         let redeem_script = Script::from_hex(&rs.redeem_script)?;
 
@@ -135,9 +139,9 @@ impl BTCSendSwap {
             Some(AddressType::P2wsh) => {
                 let txs = self
                     .chain_service
-                    .address_transactions(rs.lockup_address.clone())
+                    .address_transactions(rs.cache.lockup_address.clone())
                     .await?;
-                let utxos = get_utxos(rs.lockup_address.clone(), txs)?;
+                let utxos = get_utxos(rs.cache.lockup_address.clone(), txs)?;
 
                 let confirmed_amount: u64 = utxos
                     .confirmed

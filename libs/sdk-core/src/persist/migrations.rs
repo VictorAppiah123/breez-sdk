@@ -270,6 +270,27 @@ pub(crate) fn current_migrations() -> Vec<&'static str> {
         FROM old_swaps;
 
        DROP TABLE old_swaps;            
+       ",
+
+        // reverse_swaps      holds the immutable data
+        // reverse_swaps_info holds the cached data, which can be reconstructed by any client
+       "
+       CREATE TABLE IF NOT EXISTS reverse_swaps (
+        id TEXT PRIMARY KEY NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        local_preimage BLOB NOT NULL UNIQUE,
+        local_private_key BLOB NOT NULL UNIQUE,
+        destination_address TEXT NOT NULL,
+        boltz_api_status TEXT NOT NULL,
+        hodl_bolt11 TEXT NOT NULL UNIQUE,
+        redeem_script TEXT NOT NULL
+       ) STRICT;
+
+       CREATE TABLE IF NOT EXISTS reverse_swaps_info (
+        id TEXT PRIMARY KEY NOT NULL,
+        lockup_address TEXT NOT NULL UNIQUE,
+        onchain_amount_sat INTEGER NOT NULL
+       ) STRICT;
        "
     ]
 }
