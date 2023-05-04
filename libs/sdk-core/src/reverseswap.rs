@@ -175,13 +175,13 @@ impl BTCSendSwap {
                 let recommended_fees = self.chain_service.recommended_fees().await?;
                 let sat_per_vbyte = recommended_fees.half_hour_fee; // TODO Configurable
 
-                let redeem_script_bytes =
+                let claim_script_bytes =
                     bitcoin::psbt::serialize::Serialize::serialize(&redeem_script);
 
                 // Based on https://github.com/breez/boltz/blob/master/boltz.go#L31
-                let refund_witness_input_size: u32 = 1 + 1 + 8 + 73 + 1 + 32 + 1 + 100;
+                let claim_witness_input_size: u32 = 1 + 1 + 8 + 73 + 1 + 32 + 1 + 100;
                 let tx_weight = tx.strippedsize() as u32 * WITNESS_SCALE_FACTOR as u32
-                    + refund_witness_input_size * txins.len() as u32;
+                    + claim_witness_input_size * txins.len() as u32;
                 let fees: u64 = (tx_weight * sat_per_vbyte / WITNESS_SCALE_FACTOR as u32) as u64;
                 tx.output[0].value = confirmed_amount - fees;
 
@@ -207,7 +207,7 @@ impl BTCSendSwap {
                     let witness: Vec<Vec<u8>> = vec![
                         sigvec,
                         rs.local_preimage.clone(),
-                        redeem_script_bytes.clone(),
+                        claim_script_bytes.clone(),
                     ];
 
                     let mut signed_input = input.clone();
