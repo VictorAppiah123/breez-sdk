@@ -51,6 +51,9 @@ pub(crate) enum Commands {
         onchain_recipient_address: String,
     },
 
+    /// Get the current fees for a potential new reverse swap
+    SendOnchainFees {},
+
     /// Get the current in-progress reverse swap, if one exists
     InProgressReverseSwap {},
 

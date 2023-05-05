@@ -121,11 +121,21 @@ pub(crate) async fn handle_command(
             amount_sat,
             onchain_recipient_address,
         } => {
-            let pair_info = sdk()?.reverse_swap_info().await?;
+            let pair_info = sdk()?
+                .reverse_swap_info()
+                .await
+                .map_err(|e| anyhow!("Failed to get reverse swap fee infos: {e}"))?;
             let rev_swap_res = sdk()?
                 .send_onchain(amount_sat, onchain_recipient_address, pair_info.fees_hash)
                 .await?;
             serde_json::to_string_pretty(&rev_swap_res).map_err(|e| e.into())
+        }
+        Commands::SendOnchainFees {} => {
+            let pair_info = sdk()?
+                .reverse_swap_info()
+                .await
+                .map_err(|e| anyhow!("Failed to get reverse swap fee infos: {e}"))?;
+            serde_json::to_string_pretty(&pair_info).map_err(|e| e.into())
         }
         Commands::InProgressReverseSwap {} => {
             serde_json::to_string_pretty(&sdk()?.in_progress_reverse_swap().await?)

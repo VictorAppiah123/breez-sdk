@@ -118,7 +118,7 @@ pub trait SwapperAPI: Send + Sync {
 /// Details about the BTC/BTC reverse swap pair, at this point in time
 ///
 /// Maps the result of https://docs.boltz.exchange/en/latest/api/#getting-pairs for the BTC/BTC pair
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize)]
 pub struct ReverseSwapPairInfo {
     /// Minimum amount of sats a reverse swap is allowed to have on this endpoint
     pub min: u64,
@@ -126,7 +126,7 @@ pub struct ReverseSwapPairInfo {
     pub max: u64,
     /// Hash of the pair info JSON
     pub fees_hash: String,
-    /// Percentage fee for the Boltz service
+    /// Percentage fee for the reverse swap service
     pub fees_percentage: f64,
     /// Estimated miner fees in sats for locking up funds
     pub fees_lockup: u64,
