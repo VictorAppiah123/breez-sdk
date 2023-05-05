@@ -856,7 +856,7 @@ impl BreezServicesBuilder {
         let moon_pay_api = match self.moon_pay_api {
             Some(ref moon_pay_api) => moon_pay_api.clone(),
             None => Arc::new(Mutex::new(MoonPayApi::new(
-                self.config.moon_pay_config.clone(),
+                self.config.moonpay_api_key.clone().unwrap_or_default(),
                 Box::new(breez_server.get_signer_client().await?),
             ))),
         };

@@ -1,23 +1,25 @@
 use anyhow::Result;
 
-use crate::moonpay::moonpay_config::MoonPayConfig;
 use crate::moonpay::moonpay_url_signer::MoonPayUrlSigner;
 use crate::SwapInfo;
 
 pub struct MoonPayApi {
-    config: MoonPayConfig,
+    moonpay_api_key: String,
     signer: Box<dyn MoonPayUrlSigner>,
 }
 
 impl MoonPayApi {
-    pub fn new(config: MoonPayConfig, signer: Box<dyn MoonPayUrlSigner>) -> Self {
-        Self { config, signer }
+    pub fn new(moonpay_api_key: String, signer: Box<dyn MoonPayUrlSigner>) -> Self {
+        Self {
+            moonpay_api_key,
+            signer,
+        }
     }
 
     pub async fn sign_moon_pay_url(&mut self, url_data: &dyn MoonPayUrlData) -> Result<String> {
         self.signer
             .sign_moon_pay_url(
-                &self.config,
+                self.moonpay_api_key.as_str(),
                 url_data.bitcoin_address().as_str(),
                 url_data.max_allowed_deposit().as_str(),
             )
@@ -43,13 +45,13 @@ impl MoonPayUrlData for SwapInfo {
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::moonpay::moonpay_api::{MoonPayApi, MoonPayUrlData};
-    use crate::moonpay::moonpay_config::tests::stub_moon_pay_config;
     use crate::{SwapInfo, SwapStatus};
+    use anyhow::Result;
 
     #[tokio::test]
     async fn test_sign_moon_pay_url() -> Result<(), Box<dyn std::error::Error>> {
-        let mut api = super::MoonPayApi::new(
-            stub_moon_pay_config(),
+        let mut api = MoonPayApi::new(
+            String::from("an api key"),
             Box::new(MockMoonPayUrlSigner::default()),
         );
         let url = api
@@ -84,13 +86,13 @@ pub(crate) mod tests {
     impl super::MoonPayUrlSigner for MockMoonPayUrlSigner {
         async fn sign_moon_pay_url(
             &mut self,
-            _config: &super::MoonPayConfig,
-            _wallet_address: &str,
-            _max_quote_currency_amount: &str,
-        ) -> super::Result<String> {
+            _moonpay_api_key: &str,
+            wallet_address: &str,
+            max_quote_currency_amount: &str,
+        ) -> Result<String> {
             Ok(format!(
                 "https://mock.moonpay?wa={}&ma={}",
-                _wallet_address, _max_quote_currency_amount
+                wallet_address, max_quote_currency_amount
             ))
         }
     }
@@ -139,7 +141,7 @@ pub(crate) mod tests {
 
     pub fn stub_moon_pay_api() -> MoonPayApi {
         MoonPayApi::new(
-            stub_moon_pay_config(),
+            String::from("an api key"),
             Box::new(MockMoonPayUrlSigner::default()),
         )
     }

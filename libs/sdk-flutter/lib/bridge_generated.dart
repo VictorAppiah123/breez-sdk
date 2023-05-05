@@ -301,7 +301,7 @@ class Config {
   final String? defaultLspId;
   final String? apiKey;
   final double maxfeePercent;
-  final MoonPayConfig moonPayConfig;
+  final String? moonpayApiKey;
 
   const Config({
     required this.breezserver,
@@ -312,7 +312,7 @@ class Config {
     this.defaultLspId,
     this.apiKey,
     required this.maxfeePercent,
-    required this.moonPayConfig,
+    this.moonpayApiKey,
   });
 }
 
@@ -679,24 +679,6 @@ class MessageSuccessActionData {
 
   const MessageSuccessActionData({
     required this.message,
-  });
-}
-
-class MoonPayConfig {
-  final String baseUrl;
-  final String apiKey;
-  final String currencyCode;
-  final String colorCode;
-  final String redirectUrl;
-  final String enabledPaymentMethods;
-
-  const MoonPayConfig({
-    required this.baseUrl,
-    required this.apiKey,
-    required this.currencyCode,
-    required this.colorCode,
-    required this.redirectUrl,
-    required this.enabledPaymentMethods,
   });
 }
 
@@ -1736,7 +1718,7 @@ class BreezSdkCoreImpl implements BreezSdkCore {
       defaultLspId: _wire2api_opt_String(arr[5]),
       apiKey: _wire2api_opt_String(arr[6]),
       maxfeePercent: _wire2api_f64(arr[7]),
-      moonPayConfig: _wire2api_moon_pay_config(arr[8]),
+      moonpayApiKey: _wire2api_opt_String(arr[8]),
     );
   }
 
@@ -2033,19 +2015,6 @@ class BreezSdkCoreImpl implements BreezSdkCore {
     if (arr.length != 1) throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
     return MessageSuccessActionData(
       message: _wire2api_String(arr[0]),
-    );
-  }
-
-  MoonPayConfig _wire2api_moon_pay_config(dynamic raw) {
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6) throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return MoonPayConfig(
-      baseUrl: _wire2api_String(arr[0]),
-      apiKey: _wire2api_String(arr[1]),
-      currencyCode: _wire2api_String(arr[2]),
-      colorCode: _wire2api_String(arr[3]),
-      redirectUrl: _wire2api_String(arr[4]),
-      enabledPaymentMethods: _wire2api_String(arr[5]),
     );
   }
 
@@ -2485,7 +2454,7 @@ class BreezSdkCorePlatform extends FlutterRustBridgeBase<BreezSdkCoreWire> {
     wireObj.default_lsp_id = api2wire_opt_String(apiObj.defaultLspId);
     wireObj.api_key = api2wire_opt_String(apiObj.apiKey);
     wireObj.maxfee_percent = api2wire_f64(apiObj.maxfeePercent);
-    _api_fill_to_wire_moon_pay_config(apiObj.moonPayConfig, wireObj.moon_pay_config);
+    wireObj.moonpay_api_key = api2wire_opt_String(apiObj.moonpayApiKey);
   }
 
   void _api_fill_to_wire_greenlight_credentials(
@@ -2520,15 +2489,6 @@ class BreezSdkCorePlatform extends FlutterRustBridgeBase<BreezSdkCoreWire> {
     wireObj.default_description = api2wire_String(apiObj.defaultDescription);
     wireObj.min_withdrawable = api2wire_u64(apiObj.minWithdrawable);
     wireObj.max_withdrawable = api2wire_u64(apiObj.maxWithdrawable);
-  }
-
-  void _api_fill_to_wire_moon_pay_config(MoonPayConfig apiObj, wire_MoonPayConfig wireObj) {
-    wireObj.base_url = api2wire_String(apiObj.baseUrl);
-    wireObj.api_key = api2wire_String(apiObj.apiKey);
-    wireObj.currency_code = api2wire_String(apiObj.currencyCode);
-    wireObj.color_code = api2wire_String(apiObj.colorCode);
-    wireObj.redirect_url = api2wire_String(apiObj.redirectUrl);
-    wireObj.enabled_payment_methods = api2wire_String(apiObj.enabledPaymentMethods);
   }
 }
 
@@ -3247,20 +3207,6 @@ class wire_uint_8_list extends ffi.Struct {
   external int len;
 }
 
-class wire_MoonPayConfig extends ffi.Struct {
-  external ffi.Pointer<wire_uint_8_list> base_url;
-
-  external ffi.Pointer<wire_uint_8_list> api_key;
-
-  external ffi.Pointer<wire_uint_8_list> currency_code;
-
-  external ffi.Pointer<wire_uint_8_list> color_code;
-
-  external ffi.Pointer<wire_uint_8_list> redirect_url;
-
-  external ffi.Pointer<wire_uint_8_list> enabled_payment_methods;
-}
-
 class wire_Config extends ffi.Struct {
   external ffi.Pointer<wire_uint_8_list> breezserver;
 
@@ -3281,7 +3227,7 @@ class wire_Config extends ffi.Struct {
   @ffi.Double()
   external double maxfee_percent;
 
-  external wire_MoonPayConfig moon_pay_config;
+  external ffi.Pointer<wire_uint_8_list> moonpay_api_key;
 }
 
 class wire_GreenlightCredentials extends ffi.Struct {

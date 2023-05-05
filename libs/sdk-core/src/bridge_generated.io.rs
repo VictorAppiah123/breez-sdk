@@ -330,7 +330,7 @@ impl Wire2Api<Config> for wire_Config {
             default_lsp_id: self.default_lsp_id.wire2api(),
             api_key: self.api_key.wire2api(),
             maxfee_percent: self.maxfee_percent.wire2api(),
-            moon_pay_config: self.moon_pay_config.wire2api(),
+            moonpay_api_key: self.moonpay_api_key.wire2api(),
         }
     }
 }
@@ -378,18 +378,6 @@ impl Wire2Api<LnUrlWithdrawRequestData> for wire_LnUrlWithdrawRequestData {
         }
     }
 }
-impl Wire2Api<MoonPayConfig> for wire_MoonPayConfig {
-    fn wire2api(self) -> MoonPayConfig {
-        MoonPayConfig {
-            base_url: self.base_url.wire2api(),
-            api_key: self.api_key.wire2api(),
-            currency_code: self.currency_code.wire2api(),
-            color_code: self.color_code.wire2api(),
-            redirect_url: self.redirect_url.wire2api(),
-            enabled_payment_methods: self.enabled_payment_methods.wire2api(),
-        }
-    }
-}
 
 impl Wire2Api<Vec<u8>> for *mut wire_uint_8_list {
     fn wire2api(self) -> Vec<u8> {
@@ -412,7 +400,7 @@ pub struct wire_Config {
     default_lsp_id: *mut wire_uint_8_list,
     api_key: *mut wire_uint_8_list,
     maxfee_percent: f64,
-    moon_pay_config: wire_MoonPayConfig,
+    moonpay_api_key: *mut wire_uint_8_list,
 }
 
 #[repr(C)]
@@ -455,17 +443,6 @@ pub struct wire_LnUrlWithdrawRequestData {
 
 #[repr(C)]
 #[derive(Clone)]
-pub struct wire_MoonPayConfig {
-    base_url: *mut wire_uint_8_list,
-    api_key: *mut wire_uint_8_list,
-    currency_code: *mut wire_uint_8_list,
-    color_code: *mut wire_uint_8_list,
-    redirect_url: *mut wire_uint_8_list,
-    enabled_payment_methods: *mut wire_uint_8_list,
-}
-
-#[repr(C)]
-#[derive(Clone)]
 pub struct wire_uint_8_list {
     ptr: *mut u8,
     len: i32,
@@ -494,7 +471,7 @@ impl NewWithNullPtr for wire_Config {
             default_lsp_id: core::ptr::null_mut(),
             api_key: core::ptr::null_mut(),
             maxfee_percent: Default::default(),
-            moon_pay_config: Default::default(),
+            moonpay_api_key: core::ptr::null_mut(),
         }
     }
 }
@@ -570,25 +547,6 @@ impl NewWithNullPtr for wire_LnUrlWithdrawRequestData {
 }
 
 impl Default for wire_LnUrlWithdrawRequestData {
-    fn default() -> Self {
-        Self::new_with_null_ptr()
-    }
-}
-
-impl NewWithNullPtr for wire_MoonPayConfig {
-    fn new_with_null_ptr() -> Self {
-        Self {
-            base_url: core::ptr::null_mut(),
-            api_key: core::ptr::null_mut(),
-            currency_code: core::ptr::null_mut(),
-            color_code: core::ptr::null_mut(),
-            redirect_url: core::ptr::null_mut(),
-            enabled_payment_methods: core::ptr::null_mut(),
-        }
-    }
-}
-
-impl Default for wire_MoonPayConfig {
     fn default() -> Self {
         Self::new_with_null_ptr()
     }

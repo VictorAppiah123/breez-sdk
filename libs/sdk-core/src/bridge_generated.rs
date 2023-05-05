@@ -61,7 +61,6 @@ use crate::models::PaymentTypeFilter;
 use crate::models::SwapInfo;
 use crate::models::SwapStatus;
 use crate::models::UnspentTransactionOutput;
-use crate::moonpay::moonpay_config::MoonPayConfig;
 
 // Section: wire functions
 
@@ -700,7 +699,7 @@ impl support::IntoDart for Config {
             self.default_lsp_id.into_dart(),
             self.api_key.into_dart(),
             self.maxfee_percent.into_dart(),
-            self.moon_pay_config.into_dart(),
+            self.moonpay_api_key.into_dart(),
         ]
         .into_dart()
     }
@@ -923,21 +922,6 @@ impl support::IntoDart for MessageSuccessActionData {
     }
 }
 impl support::IntoDartExceptPrimitive for MessageSuccessActionData {}
-
-impl support::IntoDart for MoonPayConfig {
-    fn into_dart(self) -> support::DartAbi {
-        vec![
-            self.base_url.into_dart(),
-            self.api_key.into_dart(),
-            self.currency_code.into_dart(),
-            self.color_code.into_dart(),
-            self.redirect_url.into_dart(),
-            self.enabled_payment_methods.into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl support::IntoDartExceptPrimitive for MoonPayConfig {}
 
 impl support::IntoDart for Network {
     fn into_dart(self) -> support::DartAbi {
