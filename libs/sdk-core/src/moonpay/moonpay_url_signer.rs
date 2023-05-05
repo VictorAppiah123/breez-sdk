@@ -10,8 +10,8 @@ pub trait MoonPayUrlSigner: Send + Sync {
     async fn sign_moon_pay_url(
         &mut self,
         moon_pay_config: &MoonPayConfig,
-        wallet_address: &String,
-        max_quote_currency_amount: &String,
+        wallet_address: &str,
+        max_quote_currency_amount: &str,
     ) -> Result<String>;
 }
 
@@ -20,8 +20,8 @@ impl MoonPayUrlSigner for SignerClient<tonic::transport::Channel> {
     async fn sign_moon_pay_url(
         &mut self,
         config: &MoonPayConfig,
-        wallet_address: &String,
-        max_quote_currency_amount: &String,
+        wallet_address: &str,
+        max_quote_currency_amount: &str,
     ) -> Result<String> {
         let url = Url::parse_with_params(
             &config.base_url,
@@ -31,8 +31,11 @@ impl MoonPayUrlSigner for SignerClient<tonic::transport::Channel> {
                 ("colorCode", &config.color_code),
                 ("redirectURL", &config.redirect_url),
                 ("enabledPaymentMethods", &config.enabled_payment_methods),
-                ("walletAddress", wallet_address),
-                ("maxQuoteCurrencyAmount", max_quote_currency_amount),
+                ("walletAddress", &wallet_address.to_string()),
+                (
+                    "maxQuoteCurrencyAmount",
+                    &max_quote_currency_amount.to_string(),
+                ),
             ],
         )?;
         let signed_url = self
@@ -89,12 +92,12 @@ pub(crate) mod tests {
             .await?;
 
         let config = stub_moon_pay_config();
-        let wallet_address = String::from("a wallet address");
-        let max_quote_currency_amount = String::from("a max quote currency amount");
+        let wallet_address = "a wallet address";
+        let max_quote_currency_amount = "a max quote currency amount";
 
         let mut signer: Box<dyn MoonPayUrlSigner> = Box::new(SignerClient::new(channel));
         let signed_url = signer
-            .sign_moon_pay_url(&config, &wallet_address, &max_quote_currency_amount)
+            .sign_moon_pay_url(&config, wallet_address, max_quote_currency_amount)
             .await?;
         let parsed = Url::parse(&signed_url)?;
 
@@ -109,10 +112,13 @@ pub(crate) mod tests {
             query_pairs.get("enabledPaymentMethods"),
             Some(&config.enabled_payment_methods),
         );
-        assert_eq!(query_pairs.get("walletAddress"), Some(&wallet_address));
+        assert_eq!(
+            query_pairs.get("walletAddress"),
+            Some(&String::from(wallet_address))
+        );
         assert_eq!(
             query_pairs.get("maxQuoteCurrencyAmount"),
-            Some(&max_quote_currency_amount),
+            Some(&String::from(max_quote_currency_amount)),
         );
         assert_eq!(
             query_pairs.get("signature"),

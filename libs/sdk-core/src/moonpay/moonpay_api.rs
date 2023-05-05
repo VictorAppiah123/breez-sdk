@@ -18,8 +18,8 @@ impl MoonPayApi {
         self.signer
             .sign_moon_pay_url(
                 &self.config,
-                &url_data.bitcoin_address(),
-                &url_data.max_allowed_deposit(),
+                url_data.bitcoin_address().as_str(),
+                url_data.max_allowed_deposit().as_str(),
             )
             .await
     }
@@ -85,8 +85,8 @@ pub(crate) mod tests {
         async fn sign_moon_pay_url(
             &mut self,
             _config: &super::MoonPayConfig,
-            _wallet_address: &String,
-            _max_quote_currency_amount: &String,
+            _wallet_address: &str,
+            _max_quote_currency_amount: &str,
         ) -> super::Result<String> {
             Ok(format!(
                 "https://mock.moonpay?wa={}&ma={}",
