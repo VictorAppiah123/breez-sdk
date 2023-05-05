@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use breez_sdk_core::moonpay::moonpay_config::MoonPayConfig;
 use breez_sdk_core::{
     mnemonic_to_seed as sdk_mnemonic_to_seed, parse as sdk_parse_input,
     parse_invoice as sdk_parse_invoice, AesSuccessActionDataDecrypted, BitcoinAddressData,
