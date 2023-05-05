@@ -8,7 +8,7 @@ use crate::moonpay::moonpay_config::moonpay_config;
 #[tonic::async_trait]
 pub trait MoonPayUrlSigner: Send + Sync {
     async fn sign_moon_pay_url(
-        &mut self,
+        &self,
         moonpay_api_key: &str,
         wallet_address: &str,
         max_quote_currency_amount: &str,
@@ -18,7 +18,7 @@ pub trait MoonPayUrlSigner: Send + Sync {
 #[tonic::async_trait]
 impl MoonPayUrlSigner for SignerClient<tonic::transport::Channel> {
     async fn sign_moon_pay_url(
-        &mut self,
+        &self,
         moonpay_api_key: &str,
         wallet_address: &str,
         max_quote_currency_amount: &str,
@@ -39,7 +39,8 @@ impl MoonPayUrlSigner for SignerClient<tonic::transport::Channel> {
                 ),
             ],
         )?;
-        let signed_url = self
+        let mut signer = self.clone();
+        let signed_url = signer
             .sign_url(SignUrlRequest {
                 base_url: config.base_url.clone(),
                 query_string: format!("?{}", url.query().unwrap()),
@@ -75,7 +76,7 @@ pub(crate) mod tests {
         tokio::spawn(async move {
             Server::builder()
                 .add_service(SignerServer::new(signer))
-                .serve_with_incoming(iter(vec![Ok::<_, std::io::Error>(server)]))
+                .serve_with_incoming(iter(vec![Ok::<_, Error>(server)]))
                 .await
         });
         let mut client = Some(client);
@@ -97,7 +98,7 @@ pub(crate) mod tests {
         let wallet_address = "a wallet address";
         let max_quote_currency_amount = "a max quote currency amount";
 
-        let mut signer: Box<dyn MoonPayUrlSigner> = Box::new(SignerClient::new(channel));
+        let signer: Box<dyn MoonPayUrlSigner> = Box::new(SignerClient::new(channel));
         let signed_url = signer
             .sign_moon_pay_url(moonpay_api_key, wallet_address, max_quote_currency_amount)
             .await?;

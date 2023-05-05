@@ -1,25 +1,22 @@
 use anyhow::Result;
 
+use crate::breez_services::BreezServer;
 use crate::moonpay::moonpay_url_signer::MoonPayUrlSigner;
 use crate::SwapInfo;
 
-pub struct MoonPayApi {
-    moonpay_api_key: String,
-    signer: Box<dyn MoonPayUrlSigner>,
+#[tonic::async_trait]
+pub trait MoonPayApi: Send + Sync {
+    async fn sign_moon_pay_url(&self, url_data: &dyn MoonPayUrlData) -> Result<String>;
 }
 
-impl MoonPayApi {
-    pub fn new(moonpay_api_key: String, signer: Box<dyn MoonPayUrlSigner>) -> Self {
-        Self {
-            moonpay_api_key,
-            signer,
-        }
-    }
-
-    pub async fn sign_moon_pay_url(&mut self, url_data: &dyn MoonPayUrlData) -> Result<String> {
-        self.signer
+#[tonic::async_trait]
+impl MoonPayApi for BreezServer {
+    async fn sign_moon_pay_url(&self, url_data: &dyn MoonPayUrlData) -> Result<String> {
+        let moonpay_api_key = self.moonpay_api_key.clone().unwrap();
+        let signer: &dyn MoonPayUrlSigner = &self.get_signer_client().await?;
+        signer
             .sign_moon_pay_url(
-                self.moonpay_api_key.as_str(),
+                moonpay_api_key.as_str(),
                 url_data.bitcoin_address().as_str(),
                 url_data.max_allowed_deposit().as_str(),
             )
@@ -27,7 +24,7 @@ impl MoonPayApi {
     }
 }
 
-pub trait MoonPayUrlData {
+pub trait MoonPayUrlData: Send + Sync {
     fn bitcoin_address(&self) -> String;
     fn max_allowed_deposit(&self) -> String;
 }
@@ -44,28 +41,8 @@ impl MoonPayUrlData for SwapInfo {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::moonpay::moonpay_api::{MoonPayApi, MoonPayUrlData};
+    use crate::moonpay::moonpay_api::MoonPayUrlData;
     use crate::{SwapInfo, SwapStatus};
-    use anyhow::Result;
-
-    #[tokio::test]
-    async fn test_sign_moon_pay_url() -> Result<(), Box<dyn std::error::Error>> {
-        let mut api = MoonPayApi::new(
-            String::from("an api key"),
-            Box::new(MockMoonPayUrlSigner::default()),
-        );
-        let url = api
-            .sign_moon_pay_url(&MockMoonPayUrlData {
-                bitcoin_address: String::from("bitcoin_address"),
-                max_allowed_deposit: String::from("max_allowed_deposit"),
-            })
-            .await?;
-        assert_eq!(
-            url,
-            "https://mock.moonpay?wa=bitcoin_address&ma=max_allowed_deposit"
-        );
-        Ok(())
-    }
 
     #[test]
     fn test_bitcoin_address_for_swap_info() {
@@ -77,40 +54,6 @@ pub(crate) mod tests {
     fn test_max_allowed_deposit_for_swap_info() {
         let swap_info: &dyn MoonPayUrlData = &stub_swap_info();
         assert_eq!(swap_info.max_allowed_deposit(), "9.87654321");
-    }
-
-    #[derive(Default)]
-    pub struct MockMoonPayUrlSigner {}
-
-    #[tonic::async_trait]
-    impl super::MoonPayUrlSigner for MockMoonPayUrlSigner {
-        async fn sign_moon_pay_url(
-            &mut self,
-            _moonpay_api_key: &str,
-            wallet_address: &str,
-            max_quote_currency_amount: &str,
-        ) -> Result<String> {
-            Ok(format!(
-                "https://mock.moonpay?wa={}&ma={}",
-                wallet_address, max_quote_currency_amount
-            ))
-        }
-    }
-
-    #[derive(Default)]
-    pub struct MockMoonPayUrlData {
-        pub bitcoin_address: String,
-        pub max_allowed_deposit: String,
-    }
-
-    impl MoonPayUrlData for MockMoonPayUrlData {
-        fn bitcoin_address(&self) -> String {
-            self.bitcoin_address.clone()
-        }
-
-        fn max_allowed_deposit(&self) -> String {
-            self.max_allowed_deposit.clone()
-        }
     }
 
     fn stub_swap_info() -> SwapInfo {
@@ -137,12 +80,5 @@ pub(crate) mod tests {
             min_allowed_deposit: 0,
             last_redeem_error: None,
         }
-    }
-
-    pub fn stub_moon_pay_api() -> MoonPayApi {
-        MoonPayApi::new(
-            String::from("an api key"),
-            Box::new(MockMoonPayUrlSigner::default()),
-        )
     }
 }

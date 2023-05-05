@@ -27,6 +27,7 @@ use tonic::Streaming;
 use crate::grpc::{PaymentInformation, RegisterPaymentReply};
 use crate::lsp::LspInformation;
 use crate::models::{FiatAPI, LspAPI, NodeAPI, NodeState, Payment, Swap, SwapperAPI, SyncResponse};
+use crate::moonpay::moonpay_api::{MoonPayApi, MoonPayUrlData};
 use tokio::sync::{mpsc, Mutex};
 
 //use bitcoin::secp256k1::{ecdsa::{SigningKey, Signature, signature::Signer, VerifyingKey, signature::Verifier}};
@@ -455,6 +456,17 @@ impl FiatAPI for MockBreezServer {
             coin: "USD".to_string(),
             value: 20_000.00,
         }])
+    }
+}
+
+#[tonic::async_trait]
+impl MoonPayApi for MockBreezServer {
+    async fn sign_moon_pay_url(&self, url_data: &dyn MoonPayUrlData) -> Result<String> {
+        Ok(format!(
+            "https://mock.moonpay?wa={}&ma={}",
+            url_data.bitcoin_address(),
+            url_data.max_allowed_deposit()
+        ))
     }
 }
 

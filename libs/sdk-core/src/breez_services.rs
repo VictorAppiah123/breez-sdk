@@ -138,7 +138,7 @@ pub struct BreezServices {
     node_api: Arc<dyn NodeAPI>,
     lsp_api: Arc<dyn LspAPI>,
     fiat_api: Arc<dyn FiatAPI>,
-    moon_pay_api: Arc<Mutex<MoonPayApi>>,
+    moonpay_api: Arc<dyn MoonPayApi>,
     chain_service: Arc<dyn ChainService>,
     persister: Arc<SqliteStorage>,
     payment_receiver: Arc<PaymentReceiver>,
@@ -610,9 +610,7 @@ impl BreezServices {
     pub async fn buy_bitcoin(&self, provider: BuyBitcoinProvider) -> Result<String> {
         let url = match provider {
             MoonPay => {
-                self.moon_pay_api
-                    .lock()
-                    .await
+                self.moonpay_api
                     .sign_moon_pay_url(&self.receive_onchain().await?)
                     .await?
             }
@@ -726,7 +724,7 @@ struct BreezServicesBuilder {
     fiat_api: Option<Arc<dyn FiatAPI>>,
     persister: Option<Arc<SqliteStorage>>,
     swapper_api: Option<Arc<dyn SwapperAPI>>,
-    moon_pay_api: Option<Arc<Mutex<MoonPayApi>>>,
+    moonpay_api: Option<Arc<dyn MoonPayApi>>,
 }
 
 #[allow(dead_code)]
@@ -741,7 +739,7 @@ impl BreezServicesBuilder {
             fiat_api: None,
             persister: None,
             swapper_api: None,
-            moon_pay_api: None,
+            moonpay_api: None,
         }
     }
 
@@ -760,8 +758,8 @@ impl BreezServicesBuilder {
         self
     }
 
-    pub fn moon_pay_api(&mut self, moon_pay_api: MoonPayApi) -> &mut Self {
-        self.moon_pay_api = Some(Arc::new(Mutex::new(moon_pay_api)));
+    pub fn moonpay_api(&mut self, moonpay_api: Arc<dyn MoonPayApi>) -> &mut Self {
+        self.moonpay_api = Some(moonpay_api.clone());
         self
     }
 
@@ -816,6 +814,7 @@ impl BreezServicesBuilder {
         let breez_server = Arc::new(BreezServer::new(
             self.config.breezserver.clone(),
             self.config.api_key.clone(),
+            self.config.moonpay_api_key.clone(),
         ));
 
         // mempool space is used to monitor the chain
@@ -853,14 +852,6 @@ impl BreezServicesBuilder {
             payment_receiver.clone(),
         ));
 
-        let moon_pay_api = match self.moon_pay_api {
-            Some(ref moon_pay_api) => moon_pay_api.clone(),
-            None => Arc::new(Mutex::new(MoonPayApi::new(
-                self.config.moonpay_api_key.clone().unwrap_or_default(),
-                Box::new(breez_server.get_signer_client().await?),
-            ))),
-        };
-
         // Create the node services and it them statically
         let breez_services = Arc::new(BreezServices {
             node_api: unwrapped_node_api.clone(),
@@ -869,7 +860,10 @@ impl BreezServicesBuilder {
                 .fiat_api
                 .clone()
                 .unwrap_or_else(|| breez_server.clone()),
-            moon_pay_api,
+            moonpay_api: self
+                .moonpay_api
+                .clone()
+                .unwrap_or_else(|| breez_server.clone()),
             chain_service,
             persister,
             btc_receive_swapper,
@@ -886,13 +880,19 @@ impl BreezServicesBuilder {
 pub struct BreezServer {
     server_url: String,
     api_key: Option<String>,
+    pub(crate) moonpay_api_key: Option<String>,
 }
 
 impl BreezServer {
-    pub fn new(server_url: String, api_key: Option<String>) -> Self {
+    pub fn new(
+        server_url: String,
+        api_key: Option<String>,
+        moonpay_api_key: Option<String>,
+    ) -> Self {
         Self {
             server_url,
             api_key,
+            moonpay_api_key,
         }
     }
 
@@ -1142,15 +1142,15 @@ pub(crate) mod tests {
     use std::sync::Arc;
 
     use anyhow::{anyhow, Result};
-    use regex::Regex;
     use reqwest::Url;
+
+    use regex::Regex;
 
     use crate::breez_services::{BreezServices, BreezServicesBuilder};
     use crate::fiat::Rate;
     use crate::lnurl::pay::model::MessageSuccessActionData;
     use crate::lnurl::pay::model::SuccessActionProcessed;
     use crate::models::{LnPaymentDetails, NodeState, Payment, PaymentDetails, PaymentTypeFilter};
-    use crate::moonpay::moonpay_api::tests::stub_moon_pay_api;
     use crate::{
         input_parser, parse_short_channel_id, test_utils::*, BuyBitcoinProvider, InputType,
     };
@@ -1389,7 +1389,7 @@ pub(crate) mod tests {
         let breez_services = builder
             .lsp_api(Arc::new(MockBreezServer {}))
             .fiat_api(Arc::new(MockBreezServer {}))
-            .moon_pay_api(stub_moon_pay_api())
+            .moonpay_api(Arc::new(MockBreezServer {}))
             .persister(persister)
             .node_api(node_api)
             .build(None)
